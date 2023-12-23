@@ -65,12 +65,12 @@ def reset_weights(m):
     layer.reset_parameters()
 
 def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_folds = 5, *args, **kwargs):
-    model = model.to(device)
+    # model = model.to(device)
     kfold = KFold(n_splits=k_folds, shuffle=True)
     for fold, (train_ids, test_ids) in enumerate(kfold.split(dataset)):
     
         # Print
-        print(f' >> FOLD {fold} <<')
+        print(f' >> FOLD {fold + 1} <<')
         print('--------------------------------')
         
         # Sample elements randomly from a given list of ids, no replacement.
@@ -101,8 +101,8 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
                 
                 inputs, targets = data
 
-                inputs = inputs.to(device)
-                targets = targets.to(device)
+                # inputs = inputs.to(device)
+                # targets = targets.to(device)
                 
                 optimizer.zero_grad()
                 
@@ -144,12 +144,12 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
         mse_on_fold.append(mean_squared_error(targets, outputs))
     
     plt.plot(mse_on_fold)
-    plt.title(f"MSE on fold {fold}")
-    plt.savefig(f"mse_fold_{fold}.jpg")
+    plt.title(f"MSE on fold {fold+1}")
+    plt.savefig(f"mse_fold_{fold+1}.jpg")
 
     plt.plot(r2_on_fold)
-    plt.title(f"R2 on fold {fold}")
-    plt.savefig(f"r2_fold_{fold}.jpg")
+    plt.title(f"R2 on fold {fold+1}")
+    plt.savefig(f"r2_fold_{fold+1}.jpg")
 
         
 if __name__ == "__main__":
@@ -160,14 +160,10 @@ if __name__ == "__main__":
        target_transform=v2.ToDtype(torch.float32))
 
     model_seq = [
-       nn.Linear(16, 32),
-       nn.Sigmoid(),
-       nn.Linear(32, 32),
-       nn.Sigmoid(),
-       nn.Linear(32, 16),
-       nn.Sigmoid(),
-       nn.Linear(16, 4),
-       nn.Sigmoid(),
+       nn.Linear(16, 8),
+       nn.ReLU(),
+       nn.Linear(8, 4),
+       nn.ReLU(),
        nn.Linear(4, 2)
     ]
 
@@ -178,4 +174,4 @@ if __name__ == "__main__":
     # ]
 
     network = SeqNet(model_seq)
-    train(network, train_data, 1e-4, 100, nn.CrossEntropyLoss(), None, k_folds = 5)
+    train(network, train_data, 1e-4, 500, nn.MSELoss(), None, k_folds = 5)
