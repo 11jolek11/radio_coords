@@ -218,4 +218,4 @@ if __name__ == "__main__":
 
     # network = SeqNet(model_seq_2) # Best
     network = SeqNet(model_seq_2)
-    train(network, train_data, 1e-4, 500, nn.MSELoss(), None, k_folds = 5)
+    train(network, train_data, 1e-2, 500, nn.MSELoss(), None, k_folds = 5)
