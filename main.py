@@ -8,10 +8,12 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error, r2_score
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import time
 
 
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cuda' if torch.cuda.is_available() else 'cpu' # cuda time: 
+# device = 'cpu' # 
 print(f"-- >> Using device {device} << --")
 
 class SeqNet(nn.Module):
@@ -65,6 +67,10 @@ def reset_weights(m):
     layer.reset_parameters()
 
 def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_folds = 5, *args, **kwargs):
+    start = time.time()
+    print(f"Starting time: {start}")
+    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start)))
+
     # model = model.to(device)
     kfold = KFold(n_splits=k_folds, shuffle=True)
     for fold, (train_ids, test_ids) in enumerate(kfold.split(dataset)):
@@ -116,9 +122,11 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
                 
                 current_loss += loss.item()
 
-                # if i % 100:
-                    # print('Loss after mini-batch %5d: %.6f' % (i + 1, current_loss))
-                    # current_loss = 0.0
+    endtime = time.time()
+    print(f"Endtime time: {endtime}")
+    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(endtime)))
+    print(f"Full training time [{device}]: {endtime - start}")
+
             
     path = f'./model-folds-{fold + 1}.pth'
     print(f'Training process has finished. Saving trained model in {path}.')
@@ -131,6 +139,7 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
 
     r2_on_fold = []
     mse_on_fold = []
+    test_mse = []
 
     with torch.no_grad():
 
@@ -141,11 +150,13 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
         outputs = model(inputs)
 
         r2_on_fold.append(r2_score(targets, outputs))
-        mse_on_fold.append(mean_squared_error(targets, outputs))
+        # mse_on_fold.append(mean_squared_error(targets, outputs))
+        test_mse.append(nn.MSELoss()(outputs, targets).item())
     
-    plt.plot(mse_on_fold)
+    # plt.plot(mse_on_fold)
+    plt.plot(test_mse, color="g")
     plt.title(f"MSE on fold {fold+1}")
-    plt.savefig(f"mse_fold_{fold+1}.jpg")
+    plt.savefig(f"mse_fold_{fold+1}_model_seq_2.jpg")
 
     plt.plot(r2_on_fold)
     plt.title(f"R2 on fold {fold+1}")
@@ -167,11 +178,44 @@ if __name__ == "__main__":
        nn.Linear(4, 2)
     ]
 
+    model_seq_2 = [
+       nn.Linear(16, 8),
+       nn.Sigmoid(),
+       nn.Linear(8, 4),
+       nn.Sigmoid(),
+       nn.Linear(4, 2)
+    ]
+
+    model_seq_3 = [
+       nn.Linear(16, 32),
+       nn.ReLU(),
+       nn.Linear(32, 16),
+       nn.ReLU(),
+       nn.Linear(16, 4),
+       nn.ReLU(),
+       nn.Linear(4, 2)
+    ]
+
+    model_seq_4 = [
+       nn.Linear(16, 4),
+       nn.Sigmoid(),
+       nn.Linear(4, 2)
+    ]
+
     # model_seq = [
     #    nn.Linear(16, 4),
     #    nn.Sigmoid(),
     #    nn.Linear(4, 2)
     # ]
 
-    network = SeqNet(model_seq)
+    model_seq_test = [
+       nn.Linear(16, 8),
+       nn.ReLU(),
+       nn.Linear(8, 4),
+       nn.ReLU(),
+       nn.Linear(4, 2)
+    ]
+
+    # network = SeqNet(model_seq_2) # Best
+    network = SeqNet(model_seq_2)
     train(network, train_data, 1e-4, 500, nn.MSELoss(), None, k_folds = 5)
