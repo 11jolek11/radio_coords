@@ -9,6 +9,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import time
+from statistics import mean
 
 
 
@@ -58,8 +59,7 @@ class RadioData(Dataset):
 
 def reset_weights(m):
   '''
-    Try resetting model weights to avoid
-    weight leakage.
+    Reste parametrów wag
   '''
   for layer in m.children():
    if hasattr(layer, 'reset_parameters'):
@@ -74,6 +74,10 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
     # model = model.to(device)
     kfold = KFold(n_splits=k_folds, shuffle=True)
     for fold, (train_ids, test_ids) in enumerate(kfold.split(dataset)):
+
+        
+        print(f"Train dataset size: {len(train_ids)}")
+        print(f"Test dataset size: {len(test_ids)}")
     
         # Print
         print(f' >> FOLD {fold + 1} <<')
@@ -84,6 +88,8 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
         test_subsampler = torch.utils.data.SubsetRandomSampler(test_ids)
         
         # Define data loaders for training and testing data in this fold
+        # batch_size size comment:
+        # https://www.deeplearningbook.org/contents/optimization.html page 276
         trainloader = torch.utils.data.DataLoader(
                         dataset, 
                         batch_size=10, sampler=train_subsampler)
@@ -95,9 +101,11 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
         model.apply(reset_weights)
         
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        
-        for epoch in tqdm(range(epochs_number), total=epochs_number, colour="GREEN", desc=f"Fold: {fold+1}/{k_folds}  "):
 
+        losses_per_epoch = []
+        
+        for epoch in tqdm(range(epochs_number), total=epochs_number, colour="GREEN", desc=f"Fold: {fold+1}/{k_folds}"):
+            model.train()
             # print(f'Starting epoch {epoch+1}')
 
             current_loss = 0.0
@@ -121,48 +129,46 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
                 optimizer.step()
                 
                 current_loss += loss.item()
+            
+            losses_per_epoch.append(current_loss)
+
+        plt.clf()
+        plt.plot(losses_per_epoch)
+        plt.title(f"MSE - Fold 5")
+    plt.savefig("./epochs_check.jpg")
+    plt.clf()
 
     endtime = time.time()
     print(f"Endtime time: {endtime}")
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(endtime)))
     print(f"Full training time [{device}]: {endtime - start}")
 
-            
     path = f'./model-folds-{fold + 1}.pth'
     print(f'Training process has finished. Saving trained model in {path}.')
     save_path = path
     torch.save(model.state_dict(), save_path)
 
-    print('Starting testing')
+    # print('Starting testing')
     # Evaluation for this fold
-    correct, total = 0, 0
-
-    r2_on_fold = []
-    mse_on_fold = []
     test_mse = []
 
     with torch.no_grad():
+      model.eval()
 
-      for i, data in enumerate(testloader, 0):
+      for _, data in enumerate(testloader, 0):
 
         inputs, targets = data
 
         outputs = model(inputs)
 
-        r2_on_fold.append(r2_score(targets, outputs))
-        # mse_on_fold.append(mean_squared_error(targets, outputs))
         test_mse.append(nn.MSELoss()(outputs, targets).item())
-    
-    # plt.plot(mse_on_fold)
+
+    print(f"Mean MSE from all {mean(test_mse)}")
     plt.plot(test_mse, color="g")
-    plt.title(f"MSE on fold {fold+1}")
+    plt.title(f"MSE on fold {fold+1} - test")
     plt.savefig(f"mse_fold_{fold+1}_model_seq_2.jpg")
 
-    plt.plot(r2_on_fold)
-    plt.title(f"R2 on fold {fold+1}")
-    plt.savefig(f"r2_fold_{fold+1}.jpg")
 
-        
 if __name__ == "__main__":
     train_data = RadioData(
        "./data/radio_train/input_data.csv",
@@ -202,12 +208,6 @@ if __name__ == "__main__":
        nn.Linear(4, 2)
     ]
 
-    # model_seq = [
-    #    nn.Linear(16, 4),
-    #    nn.Sigmoid(),
-    #    nn.Linear(4, 2)
-    # ]
-
     model_seq_test = [
        nn.Linear(16, 8),
        nn.ReLU(),
@@ -218,4 +218,6 @@ if __name__ == "__main__":
 
     # network = SeqNet(model_seq_2) # Best
     network = SeqNet(model_seq_2)
-    train(network, train_data, 1e-2, 500, nn.MSELoss(), None, k_folds = 5)
+    train(network, train_data, 1e-2, 100, nn.MSELoss(), None, k_folds = 5)
+    # network = SeqNet(model_seq_test)
+    # train(network, train_data, 1e-2, 500, nn.MSELoss(), None, k_folds = 5)
