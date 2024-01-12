@@ -66,10 +66,17 @@ def reset_weights(m):
     print(f'Reset trainable parameters of layer = {layer}')
     layer.reset_parameters()
 
+def init_weights(m):
+    if isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform(m.weight)
+        m.bias.data.fill_(0.01)
+
 def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_folds = 5, *args, **kwargs):
     start = time.time()
     print(f"Starting time: {start}")
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start)))
+
+    # model.apply(init_weights)
 
     # model = model.to(device)
     kfold = KFold(n_splits=k_folds, shuffle=True)
@@ -105,7 +112,7 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
         losses_per_epoch = []
         
         for epoch in tqdm(range(epochs_number), total=epochs_number, colour="GREEN", desc=f"Fold: {fold+1}/{k_folds}"):
-            model.train()
+            # model.train()
             # print(f'Starting epoch {epoch+1}')
 
             current_loss = 0.0
@@ -138,7 +145,7 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
         test_mse = []
 
         with torch.no_grad():
-            model.eval()
+            # model.eval()
 
             for _, data in enumerate(testloader, 0):
 
@@ -158,6 +165,8 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
         plt.clf()
         plt.plot(losses_per_epoch)
         plt.title(f"MSE - Fold 5")
+        plt.xlabel("Epoch")
+        plt.ylabel("Value")
     plt.savefig("./epochs_check.jpg")
     plt.clf()
 
@@ -241,6 +250,6 @@ if __name__ == "__main__":
 
     # network = SeqNet(model_seq_2) # Best
     network = SeqNet(model_seq_2)
-    train(network, train_data, 1e-2, 100, nn.MSELoss(), None, k_folds = 5)
+    train(network, train_data, 1e-2, 600, nn.MSELoss(), None, k_folds = 5)
     # network = SeqNet(model_seq_test)
-    # train(network, train_data, 1e-2, 500, nn.MSELoss(), None, k_folds = 5)
+    # train(network, train_data, 1e-2, 100, nn.MSELoss(), None, k_folds = 5)
