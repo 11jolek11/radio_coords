@@ -132,6 +132,29 @@ def train(model, dataset, lr, epochs_number: int, loss_function, optimizer, k_fo
             
             losses_per_epoch.append(current_loss)
 
+        
+        # print('Starting testing')
+        # Evaluation for this fold
+        test_mse = []
+
+        with torch.no_grad():
+            model.eval()
+
+            for _, data in enumerate(testloader, 0):
+
+                inputs, targets = data
+
+                outputs = model(inputs)
+
+                test_mse.append(nn.MSELoss()(outputs, targets).item())
+
+            # print(f"Mean MSE from all {mean(test_mse)}")
+            plt.clf()
+            plt.plot(test_mse, color="g")
+            plt.title(f"MSE on fold {fold+1} - test")
+            plt.savefig(f"mse_fold_eval_.jpg")
+            plt.clf()
+            
         plt.clf()
         plt.plot(losses_per_epoch)
         plt.title(f"MSE - Fold 5")
